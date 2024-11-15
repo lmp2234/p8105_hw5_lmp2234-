@@ -5,26 +5,136 @@ date: "2024-11-13"
 output: github_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r setup, include=FALSE, message = FALSE, warning = FALSE}
+library(tidyverse)
+knitr::opts_chunk$set(
+  echo = TRUE,
+	warning = FALSE,
+  fig.width = 6,
+  fig.asp = .6,
+  out.width = "90%"
+)
+  
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
+
+options(
+  ggplot2.continuous.colour = "viridis",
+  ggplot2.continuous.fill = "viridis"
+)
+
+scale_colour_discrete = scale_colour_viridis_d
+scale_fill_discrete = scale_fill_viridis_d
 ```
 
-## R Markdown
+#Problem 2. Setting the following design elements  
+```{r}
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
 ```
 
-## Including Plots
+```{r}
+library(broom)
 
-You can also embed plots, for example:
+n <- 30
+sigma <- 5
+mu_values <-c(0,1,2,3,4,5,6)
+n_sims <-5000 
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+sim_ttest <- function(mu = 0) {
+  data <-  tibble(x = rnorm(n, mean = mu, sd = sigma))
+  ttest <- t.test(x~1, data = data)
+  tidy(ttest) %>%
+    select(estimate, p.value) %>%
+    mutate(mu = mu)
+}
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+results <- map(mu_values , function(mu) {
+  replicate(n_sims, sim_ttest(mu), simplify = FALSE)
+})
+
+results <- lapply(results, as.data.frame)
+```
+
+
+```{r, cache = }
+results_df <- results %>%
+  map_dfr(~ .x, .id = "mu") %>%
+  mutate(mu = as.numeric(mu), 
+         rejected = p.value < 0.05)
+```
+
+
+```{r}
+df_power <- results_df %>%
+  group_by(mu) %>%
+  summarize(power = mean(rejected,na.rm = TRUE), .groups = "drop" )
+```
+
+
+##Plot of the Proportion of Times Null was Rejected 
+```{r}
+ggplot(df_power, aes(x = mu, y = power))+
+  geom_point () + 
+  geom_line()+
+  labs(x= "Mu", y = "Power")
+```
+##Plot #2
+
+```{r}
+
+estimate_cols <- grep("estimate", names(results_df), value = TRUE)
+pvalue_cols <- grep("p.value", names(results_df), value = TRUE)
+
+long_data <- list()
+
+for (i in 1:length(estimate_cols)) {
+
+   estimate_data <- results_df[[estimate_cols[i]]]
+   pvalue_data <- results_df[[pvalue_cols[i]]]
+  
+   temp_data <- tibble(
+     estimate = estimate_data,
+     p.value = pvalue_data,
+     mu = results_df[[paste0("mu.", i)]]  
+   )
+   
+   long_data[[i]] <- temp_data
+}
+
+results_long <- bind_rows(long_data)
+head(results_long)
+
+```
+
+```{r}
+ggplot(
+  bind_rows(
+    results_long %>%
+      group_by(mu) %>%
+      summarize(avg_estimate = mean(estimate, na.rm = TRUE), .groups = "drop") %>%
+      mutate(type = "All Samples"),
+    
+    results_long %>%
+      filter(p.value < 0.05) %>%
+      group_by(mu) %>%
+      summarize(avg_estimate = mean(estimate, na.rm = TRUE), .groups = "drop") %>%
+      mutate(type = "Rejected Nulls")
+  ),
+  aes(x = mu, y = avg_estimate, color = type)
+) +
+ geom_point() + 
+  geom_line() +
+  labs(x = "True Mean (Mu)", y = "Average Estimate of Mu (Mû)", 
+       title = "Average Estimate of Mu vs True Mu") +
+  theme_minimal()
+
+```
+
+##Problem 3 
+
+```{r}
+homocide_df = read.csv("data/homicide-data.csv")
+```
+
