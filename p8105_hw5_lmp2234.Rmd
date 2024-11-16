@@ -254,9 +254,7 @@ prop_df  %>%
   )+
   theme_minimal()+
   theme(
-    axis.text.y = element_text(size = 7),
-    axis.text.x = element_text(size = 10),
-    plot.margin = margin(1, 1, 1, 3, "cm")
+    axis.text.y = element_text(size = 5),
   )
 ```
 
