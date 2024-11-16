@@ -32,7 +32,7 @@ scale_fill_discrete = scale_fill_viridis_d
 
 ```{r}
 
-birthday_sim <- function(n) {
+birthday_df <- function(n) {
   birthday <- sample(1:365, n, replace = TRUE)
   return(anyDuplicated(birthday)>0)
 }
@@ -42,7 +42,7 @@ group_sizes <- 2:50
 probabilities <- numeric(length(group_sizes))
 
 for (i in group_sizes){
-  simulations <- replicate(10000, birthday_sim(i))
+  simulations <- replicate(10000, birthday_df(i))
   probabilities[i-1] <- mean(simulations)
 }
 
@@ -60,11 +60,12 @@ ggplot(data, aes(x = group_size, y = probability)) +
   theme_minimal()
 
 ```
+
 The plot shows that as group size increases, the probability of two people sharing the same birthday increases as well. 
 
 
 ## Problem 2
-# Setting the following design elements  
+### Setting the design elements  
 
 ```{r}
 n <- 30
@@ -82,7 +83,7 @@ sim_ttest <- function(mu = 0) {
 
 ```
 
-# Running a simulation of ttest for each value of mu and inserting into data frame 
+### Running a simulation of ttest for each value of mu and inserting into data frame. Creating a column indicating if null hypothesis is rejected if p-value is <0.05. Calculating the statistical power for each mu.  
 
 ```{r}
 results <- map(mu_values , function(mu) {
@@ -90,35 +91,31 @@ results <- map(mu_values , function(mu) {
 })
 
 results <- lapply(results, as.data.frame)
-```
 
-# Creating a column indicating if null hypothesis is rejected if p-value is <0.05 
-```{r}
 results_df <- results %>%
   map_dfr(~ .x, .id = "mu") %>%
   mutate(mu = as.numeric(mu), 
          rejected = p.value < 0.05)
-```
 
-# Calculating the statistical power for each mu 
-```{r}
 df_power <- results_df %>%
   group_by(mu) %>%
   summarize(power = mean(rejected,na.rm = TRUE), .groups = "drop" )
 ```
 
 
-# Plot of the Proportion of Times Null was Rejected 
+### Plot of the Proportion of Times Null was Rejected 
 ```{r}
 ggplot(df_power, aes(x = mu, y = power))+
   geom_point () + 
   geom_line()+
   labs(x= "Mu", y = "Power")
 ```
+
 The association between effect size and power is that as the effect size increases, the statistical power of the test increases as well. However, the power cannot exceed 1 since the range goes from 0 to 1, as displayed by the graph. As the effect size increases, the largest power it can reach is 1. 
 
-# Plot of Average Estimates of 𝜇̂ and the true𝜇
+### Part B - Second Plot
  
+### Creating a table of the estimates, p-values, and mu to make for and binding into a single data frame for graphing. 
 ```{r}
 
 estimate_cols <- grep("estimate", names(results_df), value = TRUE)
@@ -144,6 +141,8 @@ results_long <- bind_rows(long_data)
 head(results_long)
 
 ```
+
+### Creating a plot of the average estimates of 𝜇̂ and the true 𝜇. Creating a second plot of the average estimate of 𝜇for samples in which the null was rejected on y-axis and the true value of 𝜇 on the x-axis and overlaying. 
 
 ```{r}
 ggplot(
@@ -180,10 +179,10 @@ head(homocide_df)
 
 ```
 
-# Data Description 
+### Data Description 
 The dataset contains observations on `r nrow(homocide_df)` criminal homocides over the past decade in 50 of the largest American cities. The data include `r ncol(homocide_df)` variables, and are primarily demographic characteristics about the victims, the location of the killings, and whether an arrest was made. 
 
-# Creating city_state variable and summarizing within cities 
+### Creating city_state variable and summarizing within cities 
 ```{r}
 homocide_df <- homocide_df %>%
   mutate(city_state = paste(city, state, sep = ","))
@@ -201,7 +200,7 @@ print(summarize_homocide)
 ```
 
 
-# Using prop test to estimate proportion of homocides that are unsolved in Baltimore, MD.
+### Using prop test to estimate proportion of homocides that are unsolved in Baltimore, MD.
 
 ```{r}
 baltimore_df <- summarize_homocide  %>%
@@ -224,7 +223,7 @@ cat("Confidence Interval: [", lower_ci, ",", upper_ci, "]\n")
 
 ```
 
-# Creating the table that lists estimates and confidence intervals per city 
+### Creating the table that lists estimates and confidence intervals per city 
 ```{r}
 
 prop_df <- summarize_homocide  %>%
@@ -239,8 +238,9 @@ prop_df <- summarize_homocide  %>%
       
 print(prop_df)
 ```
-# Creating a Plot of Estimates & CIs for Each City 
+### Creating a Plot of Estimates & CIs for Each City 
 
+### Organizing cities according to proportion of unsolved homocides and plotting
 ```{r}
 prop_df  %>%
   mutate(city_state = reorder(city_state, estimate))  %>%
